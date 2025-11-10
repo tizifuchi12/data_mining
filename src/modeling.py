@@ -12,7 +12,16 @@ import pandas as pd
 from sklearn.ensemble import HistGradientBoostingRegressor, RandomForestRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import ElasticNetCV, RidgeCV
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.metrics import mean_absolute_error, r2_score
+
+try:
+    from sklearn.metrics import root_mean_squared_error
+except ImportError:
+    # Fallback for older sklearn versions
+    from sklearn.metrics import mean_squared_error
+
+    def root_mean_squared_error(y_true, y_pred, **kwargs):
+        return np.sqrt(mean_squared_error(y_true, y_pred, **kwargs))
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -108,7 +117,7 @@ def maape(y_true: np.ndarray, y_pred: np.ndarray, eps: float = 1e-3) -> float:
 
 def evaluate_predictions(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
     mae = mean_absolute_error(y_true, y_pred)
-    rmse = mean_squared_error(y_true, y_pred, squared=False)
+    rmse = root_mean_squared_error(y_true, y_pred)
     r2 = r2_score(y_true, y_pred)
     maape_score = maape(y_true, y_pred)
     return {
@@ -134,6 +143,12 @@ def train_and_evaluate_models(
     y_val = y[val_mask]
     X_test = X[test_mask]
     y_test = y[test_mask]
+
+    # Remove columns that are completely empty (all NaN) to avoid imputation warnings
+    non_empty_cols = X_train.columns[X_train.notna().any()].tolist()
+    X_train = X_train[non_empty_cols]
+    X_val = X_val[non_empty_cols]
+    X_test = X_test[non_empty_cols]
 
     for name, pipeline in registry.items():
         pipeline.fit(X_train, y_train)
