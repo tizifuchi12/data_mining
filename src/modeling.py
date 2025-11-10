@@ -10,6 +10,7 @@ from typing import Dict, Iterable, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import HistGradientBoostingRegressor, RandomForestRegressor
+from sklearn.impute import SimpleImputer
 from sklearn.linear_model import ElasticNetCV, RidgeCV
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.pipeline import Pipeline
@@ -57,29 +58,34 @@ def build_model_registry(random_state: int = 42) -> Dict[str, Pipeline]:
     registry: Dict[str, Pipeline] = {}
     registry["ridge"] = Pipeline(
         [
+            ("imputer", SimpleImputer(strategy="median")),
             ("scaler", StandardScaler(with_mean=True, with_std=True)),
             ("model", RidgeCV(alphas=(0.1, 1.0, 10.0), scoring="neg_mean_absolute_error")),
         ]
     )
     registry["elastic_net"] = Pipeline(
         [
+            ("imputer", SimpleImputer(strategy="median")),
             ("scaler", StandardScaler(with_mean=True, with_std=True)),
             ("model", ElasticNetCV(l1_ratio=[0.1, 0.5, 0.9], n_alphas=50, cv=5)),
         ]
     )
     registry["random_forest"] = Pipeline(
         [
+            ("imputer", SimpleImputer(strategy="median")),
             ("model", RandomForestRegressor(n_estimators=300, max_depth=None, random_state=random_state, n_jobs=-1)),
         ]
     )
     registry["hist_gbrt"] = Pipeline(
         [
+            ("imputer", SimpleImputer(strategy="median")),
             ("model", HistGradientBoostingRegressor(random_state=random_state, max_depth=8, learning_rate=0.05)),
         ]
     )
     if LGBMRegressor is not None:
         registry["lightgbm"] = Pipeline(
             [
+                ("imputer", SimpleImputer(strategy="median")),
                 (
                     "model",
                     LGBMRegressor(
